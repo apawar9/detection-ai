@@ -9,8 +9,12 @@ load_dotenv()
 API_KEY = os.getenv("OPENROUTER_API_KEY") or st.secrets["OPENROUTER_API_KEY"]
 
 # Load prompt template
-with open("C:/Users/abhij/OneDrive/Desktop/Detection AI/sigma-rulegen/prompts/rulegen.txt", "r") as f:
-    PROMPT_TEMPLATE = f.read()
+try:
+    with open("prompts/rulegen.txt", "r") as f:
+        PROMPT_TEMPLATE = f.read()
+except FileNotFoundError:
+    st.error("❌ Could not find prompts/rulegen.txt. Please ensure the file exists in the repository.")
+    st.stop()
 
 def generate_prompt(use_case):
     return PROMPT_TEMPLATE.replace("{{USE_CASE}}", use_case)
@@ -26,12 +30,12 @@ def query_openrouter(prompt):
         "messages": [{"role": "user", "content": prompt}]
     }
 
-    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
-
-    if response.status_code == 200:
+    try:
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
+        response.raise_for_status()  # Raise an exception for bad status codes
         return response.json()["choices"][0]["message"]["content"]
-    else:
-        return f"❌ Error {response.status_code}: {response.text}"
+    except requests.exceptions.RequestException as e:
+        return f"❌ Error: {str(e)}"
 
 st.set_page_config(page_title="Sigma Rule Generator", layout="centered")
 st.title("🧠 Detection AI (via Mixtral API)")
